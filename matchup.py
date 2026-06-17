@@ -10,6 +10,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+import os, subprocess, sys
+if not os.path.exists("team_style.csv"):
+    print("team_style.csv not found - generating it first via analytics.py ...")
+    subprocess.run([sys.executable, "analytics.py"], check=True)
 style = pd.read_csv("team_style.csv", index_col="team")
 teams = style.index.tolist()
 

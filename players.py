@@ -5,6 +5,8 @@ import numpy as np, pandas as pd
 
 GOAL = (120.0, 40.0)
 def d2g(loc): return math.hypot(GOAL[0]-loc[0], GOAL[1]-loc[1])
+from statsbomb_data import ensure_data
+ensure_data()
 sel = json.load(open("sel_matches.json")); mids = [m[0] for m in sel]
 
 def minutes(events):

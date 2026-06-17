@@ -7,6 +7,8 @@ def dist_goal(x, y): return math.hypot(GOAL[0]-x, GOAL[1]-y)
 
 def load(mid): return json.load(open(f"ev/{mid}.json"))
 
+from statsbomb_data import ensure_data
+ensure_data()
 sel = json.load(open("sel_matches.json"))
 match_ids = [m[0] for m in sel]
 
