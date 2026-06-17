@@ -14,7 +14,7 @@ import os, subprocess, sys
 if not os.path.exists("team_style.csv"):
     print("team_style.csv not found - generating it first via analytics.py ...")
     subprocess.run([sys.executable, "analytics.py"], check=True)
-style = pd.read_csv("team_style.csv", index_col="team")
+style = pd.read_csv("team_style.csv", index_col="team", encoding="utf-8-sig")
 teams = style.index.tolist()
 
 # standardize (z-score)
@@ -37,7 +37,7 @@ setp = Z['setpiece_pct'] + Z['crosses_pg']
 factors = pd.DataFrame({'HighPress': press, 'BuildUp': buildup,
                         'CounterThreat': counter, 'TransitionRisk': trans_risk,
                         'SetPieces': setp})
-factors.to_csv("team_factors.csv")
+factors.to_csv("team_factors.csv", encoding="utf-8-sig")
 
 # --- edge index: A's stylistic advantage over B (higher = A exploits B's weaknesses) ---
 def edge(A, B):
@@ -51,7 +51,7 @@ def edge(A, B):
 
 M = pd.DataFrame([[edge(a, b) if a != b else np.nan for b in teams] for a in teams],
                  index=teams, columns=teams)
-M.round(2).to_csv("matchup_matrix.csv")
+M.round(2).to_csv("matchup_matrix.csv", encoding="utf-8-sig")
 
 # ================= visualization =================
 fig = plt.figure(figsize=(15, 6.5), facecolor='white')

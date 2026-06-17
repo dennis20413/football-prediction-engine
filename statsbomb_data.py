@@ -31,7 +31,7 @@ def ensure_data(verbose=True):
 
     # 1) selected match list
     if os.path.exists(SEL_FILE):
-        sel = json.load(open(SEL_FILE))
+        sel = json.load(open(SEL_FILE, encoding="utf-8"))
     else:
         if verbose:
             print("Fetching WC 2022 match list from StatsBomb...")
@@ -43,7 +43,7 @@ def ensure_data(verbose=True):
             if (h in TEAMS or a in TEAMS) and m["match_id"] not in seen:
                 seen.add(m["match_id"]); sel.append([m["match_id"], h, a])
         sel = sel[:MAX_MATCHES]
-        json.dump(sel, open(SEL_FILE, "w"))
+        json.dump(sel, open(SEL_FILE, "w", encoding="utf-8"))
 
     # 2) per-match event files
     missing = [mid for mid, _, _ in sel if not os.path.exists(f"{EV_DIR}/{mid}.json")]

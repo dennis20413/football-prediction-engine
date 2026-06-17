@@ -5,11 +5,11 @@ import numpy as np, pandas as pd
 GOAL = (120.0, 40.0)
 def dist_goal(x, y): return math.hypot(GOAL[0]-x, GOAL[1]-y)
 
-def load(mid): return json.load(open(f"ev/{mid}.json"))
+def load(mid): return json.load(open(f"ev/{mid}.json", encoding="utf-8"))
 
 from statsbomb_data import ensure_data
 ensure_data()
-sel = json.load(open("sel_matches.json"))
+sel = json.load(open("sel_matches.json", encoding="utf-8"))
 match_ids = [m[0] for m in sel]
 
 # ---------- team style ----------
@@ -77,7 +77,7 @@ for T, lst in agg.items():
         crosses_pg=d.crosses.mean(),
     ))
 style = pd.DataFrame(rows).set_index('team').round(1).sort_values('possession', ascending=False)
-style.to_csv("team_style.csv")
+style.to_csv("team_style.csv", encoding="utf-8-sig")
 pd.set_option('display.width', 200, 'display.max_columns', 30)
 print("=== Team style fingerprints (WC 2022, per-match averages) ===")
 print(style[['games', 'possession', 'directness', 'long_ball', 'press_height', 'ppda',

@@ -7,7 +7,7 @@ GOAL = (120.0, 40.0)
 def d2g(loc): return math.hypot(GOAL[0]-loc[0], GOAL[1]-loc[1])
 from statsbomb_data import ensure_data
 ensure_data()
-sel = json.load(open("sel_matches.json")); mids = [m[0] for m in sel]
+sel = json.load(open("sel_matches.json", encoding="utf-8")); mids = [m[0] for m in sel]
 
 def minutes(events):
     """Return {player: minutes played}."""
@@ -30,7 +30,7 @@ def minutes(events):
 
 stat = {}; mins_tot = {}
 for mid in mids:
-    ev = json.load(open(f"ev/{mid}.json"))
+    ev = json.load(open(f"ev/{mid}.json", encoding="utf-8"))
     by_id = {e['id']: e for e in ev}
     for p, m in minutes(ev).items():
         mins_tot[p] = mins_tot.get(p, 0) + m
@@ -86,4 +86,4 @@ df['player'] = df['player'].str.split().str[-1]  # short surname for display
 print(df.to_string(index=False))
 print("\nnpxG=non-penalty xG, xA=expected assists, prog=progressive,")
 print("def_actions=pressures+recoveries+interceptions+blocks+clearances+duels won (per 90)")
-df.to_csv("player_profiles.csv", index=False)
+df.to_csv("player_profiles.csv", index=False, encoding="utf-8-sig")
