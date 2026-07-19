@@ -153,9 +153,3 @@ All data is downloaded automatically on first run; nothing to set up by hand.
   statistically significant.
 - Adjust strength for missing players (injuries / suspensions).
 - Wrap it in Streamlit / FastAPI as a live query service for any fixture.
-
----
-
-## License
-
-MIT
