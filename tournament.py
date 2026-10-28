@@ -17,12 +17,19 @@ def load_fixtures(path, season_start="2026-01-01"):
 
 
 def build_groups(fixtures):
-    """Infer the 12 groups from the connectivity of the fixture list."""
+    """Require a complete 12-group round robin, excluding knockout fixtures."""
     import networkx as nx
     G = nx.Graph()
     for _, r in fixtures.iterrows():
         G.add_edge(r.home_team, r.away_team)
     comps = sorted([sorted(c) for c in nx.connected_components(G)])
+    if len(comps) != 12 or any(len(group) != 4 for group in comps):
+        raise ValueError("Provide complete group-stage fixtures only: 12 disconnected groups of four teams")
+    if len(fixtures) != 72 or any(G.subgraph(group).number_of_edges() != 6 for group in comps):
+        raise ValueError("Each group needs exactly six distinct pairings (72 total)")
+    pairs = [tuple(sorted([r.home_team, r.away_team])) for r in fixtures.itertuples()]
+    if len(set(pairs)) != 72:
+        raise ValueError("Duplicate group-stage pairing")
     return {chr(65 + i): set(g) for i, g in enumerate(comps)}
 
 
@@ -48,10 +55,12 @@ class Tournament:
         self.groups = build_groups(fixtures)
         self.team_group = {t: g for g, ts in self.groups.items() for t in ts}
         # split played vs unplayed up front
-        self.played = fixtures.dropna(subset=["home_score"]).copy()
+        if (fixtures.home_score.isna() != fixtures.away_score.isna()).any():
+            raise ValueError("Both fixture scores must be known or both unknown")
+        self.played = fixtures.dropna(subset=["home_score", "away_score"]).copy()
         self.unplayed = fixtures[fixtures.home_score.isna()].copy()
         # precompute expected goals for every team pair; simulation just looks up
-        teams = list(self.team_group)
+        teams = sorted(self.team_group)
         self.lam = {a: {} for a in teams}
         for a in teams:
             for b in teams:
@@ -69,7 +78,7 @@ class Tournament:
             else: stats[h]["pts"] += 1; stats[a]["pts"] += 1
         tables = {}
         for g, teams in self.groups.items():
-            ranked = sorted(teams, key=lambda t: (
+            ranked = sorted(sorted(teams), key=lambda t: (
                 stats[t]["pts"], stats[t]["gf"] - stats[t]["ga"], stats[t]["gf"],
                 self._rng.random()), reverse=True)
             tables[g] = [(t, stats[t]) for t in ranked]
@@ -122,6 +131,8 @@ class Tournament:
         return self._knockout(qualifiers)
 
     def monte_carlo(self, n_sims=20000, seed=42):
+        if type(n_sims) is not int or n_sims <= 0:
+            raise ValueError("n_sims must be a positive integer")
         rng = np.random.default_rng(seed)
         from collections import Counter
         champ = Counter()

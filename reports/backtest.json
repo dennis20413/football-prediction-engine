@@ -1,0 +1,100 @@
+{
+  "protocol": "Frozen pre-cutoff model; no test-time refits or hyperparameter selection",
+  "source": {
+    "file": "results.csv",
+    "sha256": "5dcefd1aa0483979ea8378cef5be448d2005609d39945ea162378561a30a6767",
+    "rows": 49945,
+    "pinned_download_commit": "d5bd6de012c87e2f325de602ae77fe2f9ab61ef3",
+    "pinned_download_url": "https://raw.githubusercontent.com/martj42/international_results/d5bd6de012c87e2f325de602ae77fe2f9ab61ef3/results.csv",
+    "exact_duplicates_removed": 0,
+    "conflicting_duplicate_rows_full_history": 2
+  },
+  "intervals": {
+    "training_start_inclusive": "2016-01-01",
+    "training_end_exclusive": "2024-01-01",
+    "test_start_inclusive": "2024-01-01",
+    "test_end_exclusive": "2026-06-11",
+    "training_matches": 7440,
+    "candidate_test_matches": 2564,
+    "evaluated_test_matches": 2559,
+    "excluded_unseen_team_matches": 5,
+    "coverage": 0.9980499219968799
+  },
+  "parameters": {
+    "half_life_years": 2.0,
+    "years_back": 8,
+    "ridge": 0.001,
+    "rho": 0.01877912105319265,
+    "rho_projected_test_matches": 0
+  },
+  "baseline_training_prior_hda": [
+    0.4786290322580645,
+    0.23118279569892472,
+    0.29018817204301073
+  ],
+  "metrics": {
+    "model": {
+      "log_loss": 0.8831280147490671,
+      "brier_multiclass_sum": 0.5183132929024682,
+      "accuracy": 0.5885111371629543,
+      "total_goals_mae": 1.3999956726235376
+    },
+    "same_window_prior": {
+      "log_loss": 1.0535789876107577,
+      "brier_multiclass_sum": 0.6354700052147738,
+      "accuracy": 0.4744040640875342
+    }
+  },
+  "home_win_reliability": [
+    {
+      "lower": 0.0,
+      "upper": 0.2,
+      "matches": 328,
+      "mean_predicted_home_win": 0.12724621107722126,
+      "observed_home_win": 0.07926829268292683
+    },
+    {
+      "lower": 0.2,
+      "upper": 0.4,
+      "matches": 710,
+      "mean_predicted_home_win": 0.3076706038923094,
+      "observed_home_win": 0.29859154929577464
+    },
+    {
+      "lower": 0.4,
+      "upper": 0.6000000000000001,
+      "matches": 798,
+      "mean_predicted_home_win": 0.49342300318956267,
+      "observed_home_win": 0.5025062656641605
+    },
+    {
+      "lower": 0.6000000000000001,
+      "upper": 0.8,
+      "matches": 570,
+      "mean_predicted_home_win": 0.6890419734291947,
+      "observed_home_win": 0.7578947368421053
+    },
+    {
+      "lower": 0.8,
+      "upper": 1.0,
+      "matches": 153,
+      "mean_predicted_home_win": 0.8745704952008003,
+      "observed_home_win": 0.934640522875817
+    }
+  ],
+  "versions": {
+    "python": "3.11.6",
+    "numpy": "2.3.2",
+    "pandas": "2.3.3",
+    "scipy": "1.16.3",
+    "scikit_learn": "1.9.0"
+  },
+  "limitations": [
+    "Single fixed temporal split; no claim of cross-competition generalization",
+    "Baseline accuracy is measured on test labels, not training class frequency",
+    "Score source includes extra time where recorded; outcomes are not strictly regulation-time labels",
+    "Rho is projected to valid bounds for each prediction; adaptive score tail is truncated at 1e-10 marginal mass",
+    "Calibration bins are descriptive and provide no proof of near-perfect calibration",
+    "No live feature feeds, production deployment, or wagering-performance evaluation"
+  ]
+}

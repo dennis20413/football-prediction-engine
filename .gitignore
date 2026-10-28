@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.pytest_cache/
+*.egg-info/
 
 # Auto-downloaded data (regenerated on every run — never commit)
 results.csv

@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 from sklearn.linear_model import PoissonRegressor
+from data_contract import load_results, assert_unique_matches
 
 TOURNAMENT_WEIGHT = {
     "FIFA World Cup": 1.0, "FIFA World Cup qualification": 0.9,
@@ -29,15 +30,27 @@ DEFAULT_WEIGHT = 0.7
 
 class StrengthModel:
     def __init__(self, half_life_years=2.0, years_back=8, ridge=1e-3):
+        if not np.isfinite(half_life_years) or half_life_years <= 0:
+            raise ValueError("half_life_years must be finite and positive")
+        if type(years_back) is not int or years_back <= 0:
+            raise ValueError("years_back must be a positive integer")
+        if not np.isfinite(ridge) or ridge <= 0:
+            raise ValueError("ridge must be finite and positive")
         self.half_life = half_life_years
         self.years_back = years_back
         self.ridge = ridge
 
     def fit(self, path, cutoff):
-        df = pd.read_csv(path, parse_dates=["date"])
+        df = load_results(path)
         cut = pd.Timestamp(cutoff)
         df = df[(df.date < cut) & (df.date >= cut - pd.DateOffset(years=self.years_back))]
         df = df.dropna(subset=["home_score", "away_score"]).copy()
+        assert_unique_matches(df)
+        if df.empty:
+            raise ValueError("No played matches in the training interval")
+        self.training_start = df.date.min().isoformat()
+        self.training_end = df.date.max().isoformat()
+        self.training_matches = len(df)
 
         # Time-decay weight (half-life in years) x match-importance weight
         age = (cut - df.date).dt.days / 365.25
@@ -78,6 +91,15 @@ class StrengthModel:
 
     def expected_goals(self, home_team, away_team, neutral=True):
         """Return (expected goals for home_team, expected goals for away_team)."""
+        if not hasattr(self, "_idx"):
+            raise RuntimeError("Fit the strength model before prediction")
+        if home_team == away_team:
+            raise ValueError("A team cannot play itself")
+        unknown = {home_team, away_team} - set(self._idx)
+        if unknown:
+            raise ValueError(f"Teams absent from training: {sorted(unknown)}")
+        if not isinstance(neutral, (bool, np.bool_)):
+            raise ValueError("neutral must be a boolean")
         h = 0 if neutral else 1
         lam_h = float(self.model.predict(self._vec(home_team, away_team, h))[0])
         lam_a = float(self.model.predict(self._vec(away_team, home_team, 0))[0])

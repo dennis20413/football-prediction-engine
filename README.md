@@ -1,155 +1,88 @@
-# Football Prediction Engine ⚽
+# Football Prediction Engine
 
-A data-driven football toolkit with two parts: **(1)** a backtested model that
-predicts match outcomes and simulates an entire World Cup, and **(2)** a
-team-style and player analytics layer built from StatsBomb event data. Both
-fetch their data automatically, so the repo runs anywhere with no manual setup.
+[![checks](https://github.com/dennis20413/football-prediction-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/dennis20413/football-prediction-engine/actions/workflows/ci.yml)
 
----
+Weighted Poisson match modelling, a Dixon-Coles score correction, and a reproducible chronological evaluation on international results. The repository also retains StatsBomb style/player analysis and an experimental tournament simulator.
 
-## What's inside
+**中文说明：**这个项目的重点是可复现的足球概率建模与评估。新版修正了基线准确率的计算，固定资料版本，并加入数据契约、概率有效性、时间隔离测试与 CI。比赛模拟采用简化规则；没有实时服务或真实交易表现验证。
 
-**Part 1 — Match & tournament prediction** (universal: any national team, any time)
-- Win / draw / loss probabilities, expected goals, most likely scorelines,
-  over/under 2.5, both-teams-to-score, and clean-sheet probabilities for any fixture.
-- A full World Cup Monte Carlo that fixes already-played results and simulates
-  the rest, producing each team's title odds.
+## Verified evaluation
 
-**Part 2 — Style & player analytics** (StatsBomb event data, WC 2022 demo)
-- Team "style fingerprints" (possession, pressing, directness, counter threat, …).
-- Per-90 player profiles (npxG, xA, progressive passes/carries, defensive actions).
-- An interpretable stylistic-matchup (counter) index + radar/heatmap visualization.
+The model is fitted once on **2016-01-01 <= date < 2024-01-01** and evaluated on **2024-01-01 <= date < 2026-06-11**. Feature weights and correction parameters use training data exclusively. Hyperparameters are fixed; there is no selection using the test results.
 
----
+| Metric | Match model | Same-training-window class-prior baseline |
+|---|---:|---:|
+| Log loss | 0.883128 | 1.053579 |
+| Multiclass Brier, sum over three outcomes | 0.518313 | 0.635470 |
+| Test accuracy | 58.8511% | 47.4404% |
+| Total-goals MAE | 1.4000 | — |
 
-## Results
+There are 7,440 training matches and 2,564 candidate test matches. Five test matches contain a team absent from training and are excluded: **2,559 evaluated matches; coverage 99.805%**. This coverage restriction is included in the report.
 
-**Backtest** — trained on data before 2024, evaluated on **2,542 unseen matches** after 2024:
+The source is pinned to [international_results commit d5bd6de](https://github.com/martj42/international_results/tree/d5bd6de012c87e2f325de602ae77fe2f9ab61ef3); CSV SHA-256 is recorded in [reports/backtest.json](reports/backtest.json), together with package versions, intervals, parameters and reliability-bin counts. No raw dataset is committed.
 
-| Metric | Model | Baseline |
-|---|---|---|
-| Log-loss | **0.884** | 1.054 |
-| Brier | **0.519** | 0.636 |
-| Accuracy (W/D/L) | **59.0%** | 49.1% |
-| Total-goals MAE | 1.40 | — |
+**The old README's 49.1% baseline was a training class frequency, not measured baseline test accuracy.** The corrected table above supersedes that comparison. The pinned dataset also differs from the earlier mutable snapshot, so the old 2,542-match/59.0% numbers should not be combined with this new report. See [upgrade notes](docs/upgrade-notes.md).
 
-**Calibration is near-perfect** — matches rated 60–80% home win came in at 76%;
-those rated 80%+ came in at 93%. The probabilities mean what they say.
+Reliability bins are descriptive: for example, the 60–80% bin has mean prediction 68.90% and observed home-win rate 75.79% (570 matches). This is evidence of a gap, not a claim of perfect calibration. See all five bins in the report.
 
-**Example prediction** (`python predictor.py "France" "Spain"`):
+## Run and test
 
-```
-France 28.1% | Draw 27.4% | Spain 44.5%
-Expected goals  France 1.10 - 1.45 Spain
-Total goals     most likely 3, 80% interval 1-5
-Most likely     1-1 (13.0%), 0-1 (10.8%), 1-2 (9.0%)
-Over 2.5 46.7%  |  BTTS 51.5%
-```
+Python 3.11.6 was used for the committed report; offline CI covers Python 3.11 and 3.12 on Ubuntu and Windows.
 
-**Team style fingerprints** (WC 2022, per-match averages):
+~~~sh
+python -m venv .venv
+# Activate: source .venv/bin/activate (POSIX), or .venv\Scripts\Activate.ps1 (PowerShell)
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
 
-| Team | Poss% | Directness | Press height | Counter% | xG/g |
-|---|---|---|---|---|---|
-| England | 63.3 | 20.8 | 62.5 | 3.3 | 1.7 |
-| Argentina | 55.9 | 19.4 | 57.8 | 5.1 | 3.1 |
-| Morocco | 38.9 | 22.4 | 52.7 | 3.9 | 1.3 |
-| Japan | 29.4 | 22.2 | 54.2 | 7.5 | 2.2 |
+# Explicit download of the pinned, checksum-checked public snapshot
+python backtest.py --download --output reports/backtest.json
 
-![Team style fingerprints and stylistic-matchup index](style_analysis.png)
+# A local CSV can instead be supplied; imports never download or train
+python backtest.py --data results.csv --cutoff 2024-01-01 --test-end 2026-06-11
+python predictor.py "France" "Spain"
+~~~
 
----
+A successful evaluation writes structured JSON and exits 0. Missing or invalid inputs, an empty evaluation interval, or an output path colliding with the data file exit 2. Download validation uses a temporary file; a failed refresh preserves the prior local snapshot. The sample CSV schema is date, home_team, away_team, home_score, away_score, tournament, neutral; extra provider columns are allowed.
 
-## Quickstart
+The loader validates boolean venues, dates, nonnegative integer goals, paired missing scores and nonempty team identities. Identical model-relevant rows are deduplicated. Conflicting date/team/tournament identities inside selected training or test intervals are rejected. The pinned source contains two conflicting historical rows from 1974, outside both evaluation intervals; the report exposes this count.
 
-```bash
-pip install -r requirements.txt
+## Model and probability guarantees
 
-# Part 1 — prediction
-python predictor.py "France" "Spain"   # single match
-python run.py                          # World Cup title odds
-python backtest.py                     # reproduce the accuracy numbers
+~~~mermaid
+flowchart LR
+  CSV[Pinned or local results CSV] --> Validate[Schema and identity validation]
+  Validate --> Split[Fixed date intervals]
+  Split --> Train[Training-only weighted Poisson]
+  Train --> DC[Training-only Dixon-Coles parameter]
+  DC --> Grid[Valid adaptive scoreline matrix]
+  Grid --> WDL[Home / draw / away probabilities]
+  WDL --> Report[Measured baseline, coverage and reliability]
+~~~
 
-# Part 2 — analytics (downloads StatsBomb data on first run)
-python analytics.py                    # team style fingerprints
-python players.py                      # per-90 player profiles
-python matchup.py                      # style-clash matrix + chart
-```
+The strength model uses time decay with a two-year half-life, fixed tournament importance weights and ridge regularization. Attack, defence and home advantage are fitted jointly. The correction parameter is estimated on a fixed recent training subset.
 
-All data is downloaded automatically on first run; nothing to set up by hand.
+For each prediction, rho is projected into its admissible region so all four low-score correction factors remain positive. The effective and fitted values are exposed separately. No projections were required for the committed test predictions. The score grid expands until each independent Poisson marginal includes at least 1-1e-10 probability mass, then is normalized. Supported expected-goal rates are [1e-12, 100]; unsupported rates fail explicitly.
 
----
+All match summaries—W/D/L, scorelines, goal interval, over 2.5, both teams scoring and clean sheets—come from the same matrix. Unknown or identical opposing teams fail clearly.
 
-## How it works
+## Retained research modules
 
-1. **Strength model** (`strength.py`): a weighted Poisson regression,
-   `log(expected goals) = intercept + attack[scorer] − defence[conceder] +
-   home_advantage`, solving every team at once, with time-decay (2-year
-   half-life) and match-importance weighting.
-2. **Dixon-Coles correction** (`predictor.py`): a rho parameter estimated by
-   MLE corrects the independent-Poisson bias on 0-0 / 1-0 / 1-1 results,
-   improving both accuracy and calibration.
-3. **Scoreline matrix**: the outer product of two Poisson distributions ×
-   the DC correction; every probability (W/D/L, over/under, BTTS, scorelines)
-   is integrated from this single matrix.
-4. **Tournament Monte Carlo** (`tournament.py`): fixes played results, simulates
-   the rest under the 48-team format (12 groups → top 2 + 8 best thirds → knockout),
-   repeated thousands of times for title odds.
-5. **Style metrics** (`analytics.py`, `players.py`): derived from StatsBomb event
-   data — possession, PPDA/press height, directness, field tilt, set-piece and
-   counter shares, plus per-90 player output.
-6. **Stylistic edge index** (`matchup.py`): standardized style factors combined
-   with football logic (press × build-up, counter × transition risk). This is an
-   *interpretable heuristic*, not a win probability — see Limitations.
+- **Style and player analysis:** analytics.py, players.py and matchup.py use [StatsBomb Open Data](https://github.com/statsbomb/open-data). Run their individual entry points after installation. They require network data, follow the provider's attribution/use requirements, and were not revalidated as part of this match-model upgrade. The stylistic matchup index is a heuristic.
+- **Tournament scenarios:** run.py requires an explicit complete group-only fixture CSV: 12 disconnected groups of four, six unique pairings per group, 72 rows. Completed tournament results containing knockout matches are rejected rather than silently misidentified as groups.
 
----
+~~~sh
+python run.py --data results.csv --fixtures group_stage_fixtures.csv --simulations 1000 --seed 42
+~~~
 
-## Project structure
+The simulator uses a simplified seeded knockout bracket, simplified tie breaks, independent Poisson goals and a strength-weighted penalty approximation. It is **not an implementation of every official tournament rule**. The former unsourced market-odds comparison has been removed. A fixed random seed and stable team ordering make supported scenarios repeatable.
 
-```
-.
-├── strength.py          # weighted Poisson strength model
-├── predictor.py         # single-match prediction engine (CLI)
-├── backtest.py          # out-of-time accuracy backtest
-├── tournament.py        # World Cup Monte Carlo
-├── run.py               # title odds (with market comparison)
-├── statsbomb_data.py    # auto-downloads StatsBomb event data
-├── analytics.py         # team style fingerprints
-├── players.py           # per-90 player profiles
-├── matchup.py           # stylistic-matchup index + visualization
-├── requirements.txt
-└── README.md
-```
+## Tests and evidence
 
----
+32 offline tests passed locally. Tests cover actual baseline test accuracy, date boundaries, final-test-score perturbation invariance, coverage/errors, extreme score probabilities, malformed CSVs, protected raw inputs, atomic refresh failure, shared calibration edges, tournament input guards and seed reproducibility. Synthetic tiny fixtures test code behavior; the result table above comes from the separately downloaded public dataset.
 
-## Data sources
+See [tests/test_evaluation.py](tests/test_evaluation.py), [reports/backtest.json](reports/backtest.json), [upgrade notes](docs/upgrade-notes.md), and [CI](https://github.com/dennis20413/football-prediction-engine/actions).
 
-- Match results: [martj42/international_results](https://github.com/martj42/international_results)
-  — updated daily, includes in-progress fixtures; auto-downloaded.
-- Event data: [StatsBomb Open Data](https://github.com/statsbomb/open-data)
-  — free, public; auto-downloaded (no API key).
+## Scope
 
----
-
-## Limitations (stated, not hidden)
-
-- Football is high-variance, so ~59% W/D/L accuracy is a solid ceiling, not a flaw.
-  Be skeptical of any model claiming much higher.
-- The stylistic edge index is an **interpretable heuristic**, not a win
-  probability. Reliable "counter" effects need far larger style-tagged samples
-  than national teams provide.
-- "Real-time" here means **daily, pre-match** (data refreshes from the latest
-  results). True in-play data (lineups, injuries, live odds) needs a paid feed;
-  the data layer is abstracted so a paid source can be swapped in.
-- The prediction model is results-based (works for any team). The style/player
-  analytics only cover teams with StatsBomb event data.
-
----
-
-## Possible extensions
-
-- Feed style interaction terms (press × build-up, counter × transition risk)
-  into the match model as features, and use the backtest to confirm which are
-  statistically significant.
-- Adjust strength for missing players (injuries / suspensions).
-- Wrap it in Streamlit / FastAPI as a live query service for any fixture.
+This is a results-based research model with one fixed temporal split. Source scores can include extra time, so labels are not uniformly 90-minute outcomes. Team availability limits coverage, and reliability varies by probability bin. There is no claim of an accuracy ceiling, stable future performance, causal style advantages, live lineup ingestion or production deployment.
